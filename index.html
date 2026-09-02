@@ -3,18 +3,81 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>Repomix Web Edition</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>M Code Generator</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+    }
+
+    .input-group {
+      margin-bottom: 10px;
+    }
+
+    label {
+      display: inline-block;
+      width: 120px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 300px;
+      font-family: monospace;
+    }
+  </style>
 </head>
 
 <body>
-  <h2>Repomix Web</h2>
-  <input type="file" id="folderInput" webkitdirectory directory multiple />
-  <button id="processBtn">파일 압축 및 텍스트 추출</button>
-  <br /><br />
-  <textarea id="output" rows="20" cols="80" placeholder="결과물이 여기에 표시됩니다."></textarea>
+  <h2>Power Query M Code Generator</h2>
 
-  <script src="app.js"></script>
+  <div class="input-group">
+    <label for="tableName">테이블명:</label>
+    <input type="text" id="tableName" value="RawData" />
+  </div>
+
+  <div class="input-group">
+    <label for="dateCol">날짜 컬럼명:</label>
+    <input type="text" id="dateCol" value="ad_date" />
+  </div>
+
+  <button id="generateBtn">스니펫 생성</button>
+  <button id="copyBtn">복사하기</button>
+
+  <br /><br />
+  <textarea id="output" readonly></textarea>
+
+  <script>
+    document.getElementById("generateBtn").addEventListener("click", () => {
+      const rawData = document.getElementById("tableName").value;
+      const adDate = document.getElementById("dateCol").value;
+
+      const snippet = `// ${rawData}  <-- 데이터 원본
+// ${adDate} <-- 날짜 열
+
+let
+    Source = ${rawData},
+    SelectCols = Table.SelectColumns(Source, {"${adDate}"}),
+    DistinctRows = Table.Distinct(SelectCols, {"${adDate}"}),
+    RenamedCols = Table.RenameColumns(DistinctRows, {{"${adDate}", "Date"}}),
+    ChangedType = Table.TransformColumnTypes(RenamedCols, {{"Date", type date}}),
+    AddYear = Table.AddColumn(ChangedType, "Year", each Date.Year([Date]), Int64.Type),
+    AddQuarter = Table.AddColumn(AddYear, "Quarter", each Date.QuarterOfYear([Date]), Int64.Type),
+    AddMonth = Table.AddColumn(AddQuarter, "Month", each Date.Month([Date]), Int64.Type),
+    AddDay = Table.AddColumn(AddMonth, "Day", each Date.Day([Date]), Int64.Type),
+    AddDayOfWeek = Table.AddColumn(AddDay, "DayOfWeek", each Date.DayOfWeek([Date]), Int64.Type)
+in
+    AddDayOfWeek`;
+
+      document.getElementById("output").value = snippet;
+    });
+
+    document.getElementById("copyBtn").addEventListener("click", () => {
+      const outputText = document.getElementById("output");
+      outputText.select();
+      navigator.clipboard.writeText(outputText.value);
+    });
+  </script>
 </body>
 
 </html>
